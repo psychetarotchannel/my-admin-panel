@@ -1,284 +1,93 @@
 const express = require('express');
-                            VALUES (?, ?, CURRENT_TIMESTAMP)`
-)
-;
-    
-Object
-.
-entries
-(
-settings
-)
-.
-forEach
-(
-(
-[
-key
-, 
-value
-]
-)
- => 
-{
-        
-stmt
-.
-run
-(
-[
-key
-, 
-value
-]
-)
-;
-    
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Database setup
+const db = new sqlite3.Database('./admin.db', (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database');
+    initializeDatabase();
+  }
+});
+
+function initializeDatabase() {
+  db.run(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 }
-)
-;
-    
-stmt
-.
-finalize
-(
-)
-;
-    
-res
-.
-json
-(
-{
- message
-: 
-'Settings updated successfully'
- 
-}
-)
-;
-}
-)
-;
-// EXPORT DATA
-// Export creators as JSON
-app
-.
-get
-(
-'/api/export/creators'
-, 
-authenticateToken
-, 
-requireAdmin
-, 
-(
-req
-, 
-res
-)
- => 
-{
-    
-db
-.
-all
-(
-'SELECT * FROM creators ORDER BY is_featured DESC, display_name ASC'
-, 
-[
-]
-, 
-(
-err
-, 
-creators
-)
- => 
-{
-        
-if
- 
-(
-err
-)
- 
-{
-            
-return
- 
-res
-.
-status
-(
-500
-)
-.
-json
-(
-{
- error
-: 
-'Database error'
- 
-}
-)
-;
-        
-}
-        
-// Parse platforms JSON for each creator
-        
-creators
-.
-forEach
-(
-creator
- => 
-{
-            
-if
- 
-(
-creator
-.
-platforms
-)
- 
-{
-                
-try
- 
-{
-                    
-creator
-.
-platforms
- = 
-JSON
-.
-parse
-(
-creator
-.
-platforms
-)
-;
-                
-}
- 
-catch
- 
-(
-e
-)
- 
-{
-                    
-creator
-.
-platforms
- = 
-[
-]
-;
-                
-}
-            
-}
-        
-}
-)
-;
-        
-res
-.
-setHeader
-(
-'Content-Type'
-, 
-'application/json'
-)
-;
-        
-res
-.
-setHeader
-(
-'Content-Disposition'
-, 
-'attachment; filename=psycheverse-creators.json'
-)
-;
-        
-res
-.
-json
-(
-creators
-)
-;
-    
-}
-)
-;
-}
-)
-;
+
+// API Routes
+app.get('/api/settings', (req, res) => {
+  db.all('SELECT * FROM settings', [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
+app.post('/api/settings', (req, res) => {
+  const settings = req.body;
+  const stmt = db.prepare(`INSERT OR REPLACE INTO settings (key, value, updated_at) 
+    VALUES (?, ?, CURRENT_TIMESTAMP)`);
+  
+  Object.entries(settings).forEach(([key, value]) => {
+    stmt.run([key, value]);
+  });
+  
+  stmt.finalize((err) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ success: true, message: 'Settings updated' });
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Serve admin panel
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 app.get('/admin', (req, res) => {
-  res.send('Welcome to the Psycheverse Admin Dashboard!');
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Start server
-app
-.
-listen
-(
-PORT
-, 
-(
-)
- => 
-{
-    
-console
-.
-log
-(
-`🚀 Psycheverse Admin API running on port 
-${
-PORT
-}
-`
-)
-;
-    
-console
-.
-log
-(
-`📊 Admin Dashboard: http://localhost:
-${
-PORT
-}
-`
-)
-;
-    
-console
-.
-log
-(
-`🔑 Default login: admin / admin123`
-)
-;
-}
-)
-;
-module
-.
-exports
- = 
-app
-;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Admin panel available at http://localhost:${PORT}/admin`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  db.close((err) => {
+    if (err) {
+      console.error('Error closing database:', err.message);
+    }
+    console.log('Database connection closed');
+    process.exit(0);
+  });
+});
