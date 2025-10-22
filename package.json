@@ -1,0 +1,16 @@
+{
+  "name": "psycheverse-admin-panel",
+  "version": "1.0.0",
+  "description": "Psycheverse Admin Panel - Complete admin system for managing creators and subscriptions",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && nodemon server.js"
+  },
+  "keywords": ["admin", "psycheverse", "creator-management"],
+  "author": "Psycheverse",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
