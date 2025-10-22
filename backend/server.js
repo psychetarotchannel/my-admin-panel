@@ -1,5 +1,8 @@
 const express = require('express');
-const path = require('path');
+// Update with your actual table and column names
+const stmt = db.prepare('INSERT INTO tablename (column1, column2, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
+stmt.run(value1, value2);
+
 const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
