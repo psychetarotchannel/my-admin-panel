@@ -1,9 +1,5 @@
 const path = require('path');
 const express = require('express');
-// Update with your actual table and column names
-const stmt = db.prepare('INSERT INTO tablename (column1, column2, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
-stmt.run(value1, value2);
-
 const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +31,13 @@ function initializeDatabase() {
     password TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS creators (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    email TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 }
 
 // API Routes
@@ -64,6 +67,19 @@ app.post('/api/settings', (req, res) => {
     }
     res.json({ success: true, message: 'Settings updated' });
   });
+});
+
+// New API route for creators
+app.post('/api/creators', (req, res) => {
+  const { name, email } = req.body;
+  const stmt = db.prepare('INSERT INTO creators (name, email, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
+  stmt.run([name, email], function(err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ success: true, id: this.lastID });
+  });
+  stmt.finalize();
 });
 
 app.get('/api/health', (req, res) => {
