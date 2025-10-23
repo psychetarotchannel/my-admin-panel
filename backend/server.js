@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 // Update with your actual table and column names
 const stmt = db.prepare('INSERT INTO tablename (column1, column2, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
